@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Locaria · Gestão de Aluguéis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- SRI (integrity): garante que o conteúdo da CDN não foi adulterado. Hash sha384 da
+     versão pinada; se a CDN servir algo diferente, o navegador recusa o script. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+        integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+        crossorigin="anonymous" async></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Auto-atualização: evita que o usuário fique preso numa versão antiga em cache.
+     Compara o ETag/Last-Modified do próprio index.html a cada carga; se mudou (novo deploy),
+     recarrega uma única vez. Zero manutenção — não precisa bumpar versão manualmente. -->
+<script>
+(function(){
+  try{
+    var KEY = 'locaria_version_tag';
+    fetch(location.pathname, { method:'HEAD', cache:'no-store' })
+      .then(function(r){
+        var tag = r.headers.get('ETag') || r.headers.get('Last-Modified');
+        if(!tag) return;                          // header ausente: não faz nada
+        var stored = localStorage.getItem(KEY);
+        if(stored === null){                      // primeira visita: só registra
+          localStorage.setItem(KEY, tag);
+          return;
+        }
+        if(stored !== tag){                       // versão publicada mudou → atualiza
+          localStorage.setItem(KEY, tag);         // grava antes de recarregar (evita loop)
+          if(sessionStorage.getItem('locaria_reloaded') !== tag){
+            sessionStorage.setItem('locaria_reloaded', tag);
+            location.reload();
+          }
+        }
+      })
+      .catch(function(){ /* offline / sem header: ignora silenciosamente */ });
+  }catch(e){}
+})();
+</script>
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Locaria%22%2C%22short_name%22%3A%22Locaria%22%2C%22description%22%3A%22Gest%C3%A3o%20de%20Alugu%C3%A9is%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230e1117%22%2C%22theme_color%22%3A%22%23e0a23c%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520viewBox%253D%25220%25200%2520512%2520512%2522%253E%253Crect%2520width%253D%2522512%2522%2520height%253D%2522512%2522%2520rx%253D%252296%2522%2520fill%253D%2522%25230e1117%2522%252F%253E%253Cpath%2520d%253D%2522M145%252C70%2520L145%252C442%2520L375%252C442%2520L375%252C360%2520L232%252C360%2520L232%252C70%2520Z%2522%2520fill%253D%2522%2523e0a23c%2522%252F%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%2296%22%20fill%3D%22%230e1117%22%2F%3E%3Cpath%20d%3D%22M145%2C70%20L145%2C442%20L375%2C442%20L375%2C360%20L232%2C360%20L232%2C70%20Z%22%20fill%3D%22%23e0a23c%22%2F%3E%3C%2Fsvg%3E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Locaria">
+<meta name="theme-color" content="#e0a23c">
+
+<!-- Estilos modulares (ordem: variaveis -> base/layout -> componentes -> paginas) -->
+<link rel="stylesheet" href="assets/css/themes.css">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+</head>
+<body>
+
+<!-- ── TELA DE LOGIN ── -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(160deg,#0d1219 0%,#0e1117 60%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Outfit',sans-serif;
+">
+  <div style="width:100%;max-width:380px;padding:32px 24px">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="
+        width:64px;height:64px;background:linear-gradient(135deg,#e0a23c,#c8861e);
+        border-radius:18px;display:grid;place-items:center;margin:0 auto 16px;
+        box-shadow:0 8px 32px rgba(224,162,60,.3)
+      ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#231a08" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="34"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+      </div>
+      <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:700;letter-spacing:-.5px;color:#e8edf4">Locaria</div>
+      <div style="font-size:13px;color:#5a6475;margin-top:4px">Gestão de Aluguéis · Acesso Restrito</div>
+    </div>
+
+    <!-- Login com Google -->
+    <div style="background:#1a2029;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px 24px;text-align:center">
+      <p style="font-size:13px;color:#64707f;margin-bottom:22px;line-height:1.6">
+        Use sua conta Google autorizada para acessar o sistema.
+      </p>
+
+      <!-- Botão Google Identity Services -->
+      <div id="googleSignInBtn" style="display:flex;justify-content:center;margin-bottom:16px"></div>
+
+      <div id="loginMsg" style="font-size:13px;text-align:center;min-height:18px;margin-top:4px;color:#f06565"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px">
+      <div style="font-size:11px;color:#3a4555">Acesso restrito · Apenas usuários autorizados</div>
+    </div>
+  </div>
+</div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#231a08" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Locaria</div>
+        <div class="brand-sub">Gestão de Aluguéis</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Painel</div>
+      <div class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" data-view="cobrancas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Cobranças
+      </div>
+      <div class="nav-item" data-view="historico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        Histórico de Pagamentos
+      </div>
+
+      <div class="nav-label">Cadastros</div>
+      <div class="nav-item" data-view="imoveis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+        Imóveis
+      </div>
+      <div class="nav-item" data-view="inquilinos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Inquilinos
+      </div>
+      <div class="nav-item" data-view="contratos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13l2 2 4-4"/></svg>
+        Contratos
+      </div>
+
+      <div class="nav-label">Operação</div>
+      <div class="nav-item" data-view="agenda">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Agenda
+      </div>
+      <div class="nav-item" data-view="manutencoes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Manutenções
+      </div>
+      <div class="nav-item" data-view="vistorias">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Vistorias
+      </div>
+      <div class="nav-item" data-view="relatorios">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        Relatórios
+      </div>
+
+      <div class="nav-label">Configuração</div>
+      <div class="nav-item" data-view="proprietario">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+        Proprietário
+      </div>
+      <div class="nav-item" data-view="regras">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Regras de Cobrança
+      </div>
+    </nav>
+    <div class="side-foot">
+      <!-- Usuário logado: bolinha de status (Sheets) + nome + sair, tudo num espaço só -->
+      <div class="conn-pill" id="userPill" style="cursor:default">
+        <span class="dot live" id="connDot" title="Conectado ao Sheets"></span>
+        <span id="userName" style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#e8edf4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Usuário</span>
+        <button onclick="logoutGoogle()" title="Sair" style="
+          background:none;border:none;cursor:pointer;color:#5a6475;padding:4px;
+          border-radius:6px;display:flex;align-items:center;transition:.15s;flex-shrink:0
+        " onmouseover="this.style.color='#f06565'" onmouseout="this.style.color='#5a6475'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" onclick="toggleSidebar()"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+      <div class="page-title">
+        <h1 id="pgTitle">Visão Geral</h1>
+        <p id="pgSub">Resumo gerencial da sua carteira de locação</p>
+      </div>
+      <button class="gsr-btn" onclick="gsrOpen()" title="Busca global (/)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Buscar</span>
+        <span class="kbd">/</span>
+      </button>
+      <div class="reaj-sino-wrap">
+        <button class="gsr-btn reaj-sino" id="reajSinoBtn" onclick="toggleReajusteDropdown(event)" title="Avisos de reajuste" aria-label="Avisos de reajuste">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <span class="reaj-badge" id="reajBadge" style="display:none"></span>
+        <div class="reaj-dropdown" id="reajDropdown" style="display:none"></div>
+      </div>
+      <div class="topbar-actions" id="topActions"></div>
+    </header>
+
+    <div class="content">
+      <section class="view active" id="view-dashboard"></section>
+      <section class="view" id="view-cobrancas"></section>
+      <section class="view" id="view-historico"></section>
+      <section class="view" id="view-agenda"></section>
+      <section class="view" id="view-manutencoes"></section>
+      <section class="view" id="view-inquilinos"></section>
+      <section class="view" id="view-contratos"></section>
+      <section class="view" id="view-imoveis"></section>
+      <section class="view" id="view-vistorias"></section>
+      <section class="view" id="view-relatorios"></section>
+      <section class="view" id="view-regras"></section>
+      <section class="view" id="view-proprietario"></section>
+    </div>
+  </div>
+</div>
+
+<!-- ── BUSCA GLOBAL ── -->
+<div class="gsr-overlay" id="gsrOverlay" onclick="gsrOverlayClick(event)">
+  <div class="gsr-box">
+    <div class="gsr-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="gsr-input" id="gsrInput" placeholder="Buscar imóveis, inquilinos, cobranças…" autocomplete="off" oninput="gsrSearch(this.value)" onkeydown="gsrKeyNav(event)">
+      <button class="gsr-close" onclick="gsrClose()">Esc</button>
+    </div>
+    <div class="gsr-results" id="gsrResults"></div>
+    <div class="gsr-tip">
+      <span><kbd>↑↓</kbd> navegar</span>
+      <span><kbd>Enter</kbd> abrir</span>
+      <span><kbd>Esc</kbd> fechar</span>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn" onclick="fabAction()" title="Novo">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+
+<!-- ============================================================
+     SCRIPTS (classic scripts, escopo global compartilhado).
+     Ordem obrigatoria: CORE -> COMPONENTS -> MODULES -> main.js (por ultimo).
+     main.js contem o bootstrap auto-executavel (sessao, listeners, init).
+     ============================================================ -->
+<!-- core -->
+<script src="assets/js/core/config.js"></script>
+<script src="assets/js/core/security.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/helpers.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/core/auth.js"></script>
+<!-- components -->
+<script src="assets/js/components/toast.js"></script>
+<script src="assets/js/components/modal.js"></script>
+<script src="assets/js/components/sidebar.js"></script>
+<script src="assets/js/components/datatable.js"></script>
+<script src="assets/js/components/forms.js"></script>
+<script src="assets/js/components/pdf.js"></script>
+<script src="assets/js/components/search.js"></script>
+<!-- modules -->
+<script src="assets/js/modules/dashboard.js"></script>
+<script src="assets/js/modules/cobrancas.js"></script>
+<script src="assets/js/modules/pagamentos.js"></script>
+<script src="assets/js/modules/inquilinos.js"></script>
+<script src="assets/js/modules/contratos.js"></script>
+<script src="assets/js/modules/vistorias.js"></script>
+<script src="assets/js/modules/imoveis.js"></script>
+<script src="assets/js/modules/agenda.js"></script>
+<script src="assets/js/modules/manutencoes.js"></script>
+<script src="assets/js/modules/relatorios.js"></script>
+<script src="assets/js/modules/configuracoes.js"></script>
+<!-- bootstrap (ultimo) -->
+<script src="assets/js/main.js"></script>
+</body>
+</html>
